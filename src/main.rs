@@ -8,20 +8,23 @@ extern crate humantime;
 extern crate time;
 //#[macro_use]
 extern crate influx_db_client;
-extern crate kairos;
 extern crate serde_json;
 
-mod query;
+mod influx;
+mod lttb;
 mod settings;
+mod trade;
 mod utils;
 
-use chrono::NaiveDateTime;
-use influx_db_client::Client;
-use query::{build_query, run_query};
+use influx::{build_query, get_values, influx_client, run_query, save_points};
+use influx_db_client::Point;
+use lttb::lttb_downsample;
+use serde_json::Value;
 use settings::parse_args;
 use std::process::exit;
 use time::Duration;
-use utils::time::truncate_seconds;
+use trade::Trade;
+use utils::time::{truncate_seconds, IntervalIterator};
 
 fn main() {
     let mut settings = parse_args().unwrap_or_else(|e| {
@@ -48,57 +51,48 @@ fn main() {
         step: Duration::seconds(60),
     };
 
-    let client = Client::default().set_authentication("root", "root");
+    let client = influx_client();
 
-    for (i, (start, end)) in iter.enumerate().take(1) {
+    for (i, (start, end)) in iter.enumerate().take(3) {
         let query = build_query(start.timestamp_nanos(), end.timestamp_nanos(), 0);
         let res = run_query(&client, &query);
-        let vals = &res
-            .as_ref()
-            .unwrap()
-            .as_ref()
-            .unwrap()
-            .first()
-            .unwrap()
-            .series
-            .as_ref()
-            .unwrap()
-            .first()
-            .as_ref()
-            .unwrap()
-            .values;
+        let vals = get_values(&res);
 
         let count = vals.iter().count();
 
         println!("{} - [{} - {}] ({})", i, start, end, count);
 
-        for val in vals {
-            let timestamp = &val[0].as_i64().unwrap();
-            let price = &val[1].as_f64().unwrap();
-            let amount = &val[2].as_f64().unwrap();
-            println!("{} {} {}", timestamp, price, amount);
-        }
+        let raw = to_trades(vals);
+        let downsampled = lttb_downsample(&raw, 60);
+        let points = to_points(&raw, &downsampled);
+
+        //        println!("{:#?}", points);
+
+        save_points(&client, "glukoz-rentention-policy", points).unwrap();
     }
 }
 
-struct IntervalIterator {
-    pub end: NaiveDateTime,
-    pub cur: NaiveDateTime,
-    pub prev: NaiveDateTime,
-    pub step: Duration,
+pub fn to_trades(vals: &Vec<Vec<Value>>) -> Vec<Trade> {
+    vals.iter()
+        .map(|val| Trade {
+            price: val[1].as_f64().unwrap(),
+            timestamp: val[0].as_i64().unwrap(),
+            amount: val[2].as_f64().unwrap(),
+        })
+        .collect()
 }
 
-impl Iterator for IntervalIterator {
-    type Item = (NaiveDateTime, NaiveDateTime);
+pub fn to_points(raw: &Vec<Trade>, downsampled: &Option<Vec<&Trade>>) -> Vec<Point> {
+    let points: Vec<Point> = if let Some(downsampled) = downsampled {
+        downsampled
+            .iter()
+            .map(|trade| (*trade).to_point("binance_btcusdt_trades_seconds"))
+            .collect()
+    } else {
+        raw.iter()
+            .map(|trade| trade.to_point("binance_btcusdt_trades_seconds"))
+            .collect()
+    };
 
-    fn next(&mut self) -> Option<Self::Item> {
-        self.prev = self.cur;
-        self.cur = self.cur + self.step;
-
-        if self.cur <= self.end {
-            Some((self.prev, self.cur))
-        } else {
-            None
-        }
-    }
+    points
 }
