@@ -68,6 +68,7 @@ fn main() {
 
         //        println!("{:#?}", points);
 
+        // TODO: handle errors
         save_points(&client, "glukoz-rentention-policy", points).unwrap();
     }
 }
@@ -86,7 +87,7 @@ pub fn to_points(raw: &Vec<Trade>, downsampled: &Option<Vec<&Trade>>) -> Vec<Poi
     let points: Vec<Point> = if let Some(downsampled) = downsampled {
         downsampled
             .iter()
-            .map(|trade| (*trade).to_point("binance_btcusdt_trades_seconds"))
+            .map(|trade| trade.to_point("binance_btcusdt_trades_seconds"))
             .collect()
     } else {
         raw.iter()

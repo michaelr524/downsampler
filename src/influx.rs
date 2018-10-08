@@ -45,7 +45,7 @@ pub fn get_values(result: &Result<Option<Vec<Node>>, error::Error>) -> &Vec<Vec<
         .first()
         .as_ref()
         .unwrap()
-        .values
+        .values // TODO: handle errors
 }
 
 pub fn save_points(
