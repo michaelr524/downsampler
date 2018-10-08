@@ -121,31 +121,31 @@ pub fn parse_args() -> Result<Settings, Error> {
     Ok(Settings { start, end })
 }
 
-fn parse_duration(maybe_string: Option<&str>) -> Result<Duration, Error> {
-    let duration_str = maybe_string.ok_or(Error::DurationParseError {
+fn parse_duration(date_string: Option<&str>) -> Result<Duration, Error> {
+    let duration_str = date_string.ok_or(Error::DurationParseError {
         inner: None,
-        duration: maybe_string.map_or(None, |s| Some(s.to_string())),
+        duration: date_string.map_or(None, |s| Some(s.to_string())),
     })?;
 
     let duration_std = human_parse_duration(duration_str).map_err(|e| Error::DurationParseError {
         inner: Some(e),
-        duration: maybe_string.map_or(None, |s| Some(s.to_string())),
+        duration: date_string.map_or(None, |s| Some(s.to_string())),
     })?;
 
     Duration::from_std(duration_std).map_err(|e| Error::DurationTooLong(e))
 }
 
-fn parse_datetime(maybe_string: Option<&str>) -> Result<NaiveDateTime, Error> {
-    let date_str = maybe_string.ok_or(Error::DateParseError {
+fn parse_datetime(date_string: Option<&str>) -> Result<NaiveDateTime, Error> {
+    let date_str = date_string.ok_or(Error::DateParseError {
         inner: None,
-        datetime: maybe_string.map_or(None, |s| Some(s.to_string())),
+        datetime: date_string.map_or(None, |s| Some(s.to_string())),
     })?;
 
     let date_time = Utc
         .datetime_from_str(date_str, "%Y-%m-%d %H:%M:%S")
         .map_err(|e| Error::DateParseError {
             inner: Some(e),
-            datetime: maybe_string.map_or(None, |s| Some(s.to_string())),
+            datetime: date_string.map_or(None, |s| Some(s.to_string())),
         })?;
 
     Ok(date_time.naive_utc())
