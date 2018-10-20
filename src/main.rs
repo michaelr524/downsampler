@@ -9,8 +9,8 @@ extern crate time;
 //#[macro_use]
 extern crate influx_db_client;
 //#[macro_use]
-extern crate serde_json;
 extern crate rayon;
+extern crate serde_json;
 
 mod influx;
 mod lttb;

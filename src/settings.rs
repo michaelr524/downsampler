@@ -107,7 +107,6 @@ years, year, y -- defined as 365.25 days
     // TODO::::
     //    MOVE DOWNSAMPLE INTO SUB COMMAND
     //    ADD ANOTHER TOP COMMAND FOR SPLITTING TIMESERIES
-
 }
 
 pub fn parse_args() -> Result<Settings, Error> {

@@ -4,16 +4,15 @@ use influx::{
     SeriesResult,
 };
 use influx_db_client::Point;
+use rayon::prelude::*;
 use settings::Settings;
 use std::process::exit;
 use time::Duration;
 use utils::time::IntervalIterator;
-use rayon::prelude::*;
 
 //#[derive(Fail, Debug)]
 //pub enum Error {
 //}
-
 
 pub fn split(settings: &Settings) -> () {
     let client = influx_client();
@@ -78,10 +77,10 @@ pub fn to_points(series: SeriesResult, measurement: &str) -> Result<Vec<Point>, 
                 .into_iter()
                 .skip(1)
                 .zip(series.columns.iter().skip(1))
-                {
-                    let influx_val = json_val_to_influx_val(val)?;
-                    point.add_field(column_name, influx_val);
-                }
+            {
+                let influx_val = json_val_to_influx_val(val)?;
+                point.add_field(column_name, influx_val);
+            }
 
             Ok(point)
         })

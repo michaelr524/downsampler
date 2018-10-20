@@ -48,7 +48,7 @@ WHERE feed_id = 'binance'
 }
 
 pub fn run_query(client: &Client, query: &str) -> Result<Option<Vec<Node>>, error::Error> {
-//    println!("{}", query);
+    //    println!("{}", query);
 
     client.query(query, Some(Precision::Nanoseconds))
 }
@@ -101,12 +101,12 @@ pub fn json_val_to_influx_val(val: &Value) -> Result<InfluxValue, Error> {
             // TODO: handle generically. currently converts all numbers to floats, because some
             // of the values in float columns returned as integers (maybe because of JSON, or maybe
             // they are written using the wrong type)
-//            if val.is_f64() {
-//                // safe because we've checked with .is_f64()
-//                InfluxValue::Float(val.as_f64().unwrap())
-//            } else if val.is_i64() {
-//                // safe because we've checked with .is_i64()
-//                InfluxValue::Integer(val.as_i64().unwrap())
+            //            if val.is_f64() {
+            //                // safe because we've checked with .is_f64()
+            //                InfluxValue::Float(val.as_f64().unwrap())
+            //            } else if val.is_i64() {
+            //                // safe because we've checked with .is_i64()
+            //                InfluxValue::Integer(val.as_i64().unwrap())
             if val.is_f64() || val.is_i64() {
                 // safe because we've checked with .is_i64() and is_f64()
                 InfluxValue::Float(val.as_f64().unwrap())
