@@ -5,6 +5,7 @@ use clap::ArgGroup;
 use clap::{App, Arg};
 use humantime::{parse_duration as human_parse_duration, DurationError};
 use time::{Duration, OutOfRangeError};
+use utils::time::truncate_seconds;
 
 #[derive(Fail, Debug)]
 pub enum Error {
@@ -49,6 +50,8 @@ pub enum Error {
 }
 
 pub struct Settings {
+    pub raw_start: NaiveDateTime,
+    pub raw_end: NaiveDateTime,
     pub start: NaiveDateTime,
     pub end: NaiveDateTime,
 }
@@ -100,25 +103,48 @@ years, year, y -- defined as 365.25 days
             .required(true)
             .args(&["end", "duration"])
     )
+
+    // TODO::::
+    //    MOVE DOWNSAMPLE INTO SUB COMMAND
+    //    ADD ANOTHER TOP COMMAND FOR SPLITTING TIMESERIES
+
 }
 
 pub fn parse_args() -> Result<Settings, Error> {
     let args = args_definitions().get_matches();
 
-    let start = parse_datetime(args.value_of("start"))
+    let raw_start = parse_datetime(args.value_of("start"))
         .map_err(|e| Error::InvalidStartArgument(Box::new(e)))?;
 
-    let end = if args.is_present("duration") {
+    let raw_end = if args.is_present("duration") {
         let duration = parse_duration(args.value_of("duration"))
             .map_err(|e| Error::InvalidDurationArgument(Box::new(e)))?;
-        start + duration
+        raw_start + duration
     } else {
         let datetime = parse_datetime(args.value_of("end"))
             .map_err(|e| Error::InvalidEndArgument(Box::new(e)))?;
         datetime
     };
 
-    Ok(Settings { start, end })
+    let start = truncate_seconds(raw_start);
+    let end = truncate_seconds(raw_end);
+
+    Ok(Settings {
+        start,
+        end,
+        raw_start,
+        raw_end,
+    })
+}
+
+pub fn print_settings_info(settings: &Settings) {
+    println!("Period {:?} - {:?}", settings.raw_start, settings.raw_end);
+    println!("Period truncated {:?} - {:?}", settings.start, settings.end);
+    println!(
+        "Period in nanos {:?} - {:?}",
+        settings.start.timestamp_nanos(),
+        settings.end.timestamp_nanos()
+    );
 }
 
 fn parse_duration(date_string: Option<&str>) -> Result<Duration, Error> {
