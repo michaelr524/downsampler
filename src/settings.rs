@@ -2,6 +2,7 @@ use chrono::format::ParseError;
 use chrono::offset::TimeZone;
 use chrono::{NaiveDateTime, Utc};
 use clap::ArgGroup;
+use clap::SubCommand;
 use clap::{App, Arg};
 use humantime::{parse_duration as human_parse_duration, DurationError};
 use time::{Duration, OutOfRangeError};
@@ -9,44 +10,51 @@ use utils::time::truncate_seconds;
 
 #[derive(Fail, Debug)]
 pub enum Error {
+    #[fail(display = "No command has been specified", )]
+    CommandMissing,
     #[fail(
-        display = "Failed to parse datetime from argument: {:?}, Error: {:?}",
-        datetime,
-        inner
+    display = "Failed to parse datetime from argument: {:?}, Error: {:?}",
+    datetime,
+    inner
     )]
     DateParseError {
         datetime: Option<String>,
         inner: Option<ParseError>,
     },
     #[fail(
-        display = "Failed to parse duration from argument: {:?}, Error: {:?}",
-        duration,
-        inner
+    display = "Failed to parse duration from argument: {:?}, Error: {:?}",
+    duration,
+    inner
     )]
     DurationParseError {
         duration: Option<String>,
         inner: Option<DurationError>,
     },
     #[fail(
-        display = "Invalid `start` argument passed. It should have this format: '2018-10-10 10:10:10'. Error: {:?}",
-        _0
+    display = "Invalid `start` argument passed. It should have this format: '2018-10-10 10:10:10'. Error: {:?}",
+    _0
     )]
     InvalidStartArgument(Box<Error>),
     #[fail(
-        display = "Invalid `end` argument passed. It should have this format: '2018-10-10 10:10:10'. Error: {:?}",
-        _0
+    display = "Invalid `end` argument passed. It should have this format: '2018-10-10 10:10:10'. Error: {:?}",
+    _0
     )]
     InvalidEndArgument(Box<Error>),
     #[fail(
-        display = "Invalid `duration` argument passed. It should have this format: '1hour 12min 5s'. Error: {:?}",
-        _0
+    display = "Invalid `duration` argument passed. It should have this format: '1hour 12min 5s'. Error: {:?}",
+    _0
     )]
     InvalidDurationArgument(Box<Error>),
     #[fail(
-        display = "Invalid `duration` argument passed. It exceeds the supported duration length. Error: {:?}",
-        _0
+    display = "Invalid `duration` argument passed. It exceeds the supported duration length. Error: {:?}",
+    _0
     )]
     DurationTooLong(OutOfRangeError),
+}
+
+pub enum Command {
+    Downsample,
+    Split,
 }
 
 pub struct Settings {
@@ -54,36 +62,30 @@ pub struct Settings {
     pub raw_end: NaiveDateTime,
     pub start: NaiveDateTime,
     pub end: NaiveDateTime,
+    pub command: Command,
 }
 
 fn args_definitions<'a, 'b>() -> App<'a, 'b> {
-    App::new("Downsampler")
-        .version("1.0")
-        .author("Michael Ravits. <michael@xlucidity.com>")
-        .about("Does awesome things")
-        .arg(
-            Arg::with_name("start")
-                .short("s")
-                .long("start")
-                .value_name("DATETIME")
-                .help("Start time e.g 2018-10-10 10:10:10")
-                .required(true)
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("end")
-                .short("e")
-                .long("end")
-                .value_name("DATETIME")
-                .help("End time e.g 2018-11-11 11:11:11")
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name("duration")
-                .short("d")
-                .long("duration")
-                .value_name("TIME")
-                .help(r#"Duration e.g '1hour 12min 5s'
+    let start_arg = Arg::with_name("start")
+        .short("s")
+        .long("start")
+        .value_name("DATETIME")
+        .help("Start time e.g 2018-10-10 10:10:10")
+        .required(true)
+        .takes_value(true);
+
+    let end_arg = Arg::with_name("end")
+        .short("e")
+        .long("end")
+        .value_name("DATETIME")
+        .help("End time e.g 2018-11-11 11:11:11")
+        .takes_value(true);
+
+    let duration_arg = Arg::with_name("duration")
+        .short("d")
+        .long("duration")
+        .value_name("TIME")
+        .help(r#"Duration e.g '1hour 12min 5s'
 The duration object is a concatenation of time spans. Where each time span is an integer number and a suffix. Supported suffixes:
 
 nsec, ns -- microseconds
@@ -97,20 +99,46 @@ weeks, week, w
 months, month, M -- defined as 30.44 days
 years, year, y -- defined as 365.25 days
             "#)
-                .takes_value(true),
-        ).group(
-        ArgGroup::with_name("period_end")
-            .required(true)
-            .args(&["end", "duration"])
-    )
+        .takes_value(true);
 
-    // TODO::::
-    //    MOVE DOWNSAMPLE INTO SUB COMMAND
-    //    ADD ANOTHER TOP COMMAND FOR SPLITTING TIMESERIES
+    let period_end_group = ArgGroup::with_name("period_end")
+        .required(true)
+        .args(&["end", "duration"]);
+
+    App::new("Downsampler")
+        .version(crate_version!())
+        .author("Michael Ravits. <michael@xlucidity.com>")
+        .about("Utilities for transforming InfluxDB time series data")
+        .bin_name("downsampler")
+        .subcommand(
+            SubCommand::with_name("split")
+                .about("Splits single measurement with many series into many separate measurements")
+                .arg(start_arg.clone())
+                .arg(end_arg.clone())
+                .arg(duration_arg.clone())
+                .group(period_end_group.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("downsample")
+                .about("Creates downsampled series from a series")
+                .arg(start_arg.clone())
+                .arg(end_arg.clone())
+                .arg(duration_arg.clone())
+                .group(period_end_group.clone()),
+        )
 }
 
 pub fn parse_args() -> Result<Settings, Error> {
     let args = args_definitions().get_matches();
+
+    let (args, command) = match args.subcommand() {
+        ("downsample", Some(subcommand)) => (subcommand, Command::Downsample),
+        ("split", Some(subcommand)) => (subcommand, Command::Split),
+        _ => {
+            args_definitions().print_help().unwrap();
+            return Err(Error::CommandMissing);
+        }
+    };
 
     let raw_start = parse_datetime(args.value_of("start"))
         .map_err(|e| Error::InvalidStartArgument(Box::new(e)))?;
@@ -133,6 +161,7 @@ pub fn parse_args() -> Result<Settings, Error> {
         end,
         raw_start,
         raw_end,
+        command,
     })
 }
 

@@ -1,4 +1,5 @@
 extern crate chrono;
+#[macro_use]
 extern crate clap;
 extern crate env_logger;
 extern crate failure;
@@ -16,21 +17,25 @@ mod influx;
 mod lttb;
 mod settings;
 mod splitter;
+mod downsampler;
 mod trade;
 mod utils;
 
-use settings::parse_args;
-use settings::print_settings_info;
+use settings::{parse_args, print_settings_info, Command};
+use downsampler::downsample;
 use splitter::split;
 use std::process::exit;
 
 fn main() {
     let settings = parse_args().unwrap_or_else(|e| {
-        println!("Error: {}", e);
+        println!("\n\nError: {}", e);
         exit(-1)
     });
 
     print_settings_info(&settings);
 
-    split(&settings);
+    match settings.command {
+        Command::Downsample => downsample(&settings),
+        Command::Split => split(&settings),
+    };
 }

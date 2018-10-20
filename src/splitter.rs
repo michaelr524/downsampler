@@ -1,4 +1,3 @@
-use chrono::NaiveDateTime;
 use influx::{
     extract_timestamp, get_range, influx_client, json_val_to_influx_val, save_points, Error,
     SeriesResult,
@@ -8,7 +7,7 @@ use rayon::prelude::*;
 use settings::Settings;
 use std::process::exit;
 use time::Duration;
-use utils::time::IntervalIterator;
+use utils::time::{intervals};
 
 //#[derive(Fail, Debug)]
 //pub enum Error {
@@ -17,6 +16,7 @@ use utils::time::IntervalIterator;
 pub fn split(settings: &Settings) -> () {
     let client = influx_client();
 
+    // Hey look, par_iter() !!
     pair_names().par_iter()
 //        .take(1)
         .for_each(|pair_name| {
@@ -24,7 +24,7 @@ pub fn split(settings: &Settings) -> () {
 
             let measurement = format!("trades_binance_{pair_name}_raw", pair_name = pair_name);
 
-            for (i, (start, end)) in intervals(settings.start, settings.end, Duration::hours(1))
+            for (_i, (start, end)) in intervals(settings.start, settings.end, Duration::hours(1))
                 .enumerate()
 //            .take(1)
                 {
@@ -39,7 +39,7 @@ pub fn split(settings: &Settings) -> () {
                         },
                     };
 
-                    let count = series.values.iter().count();
+                    let _count = series.values.iter().count();
 
 //                    println!("{} - [{} - {}] ({})", i, start, end, count);
 
@@ -51,7 +51,7 @@ pub fn split(settings: &Settings) -> () {
 //                println!("{:#?}", points);
 
                     // TODO: handle errors
-                    save_points(&client, "glukoz-rp", points);
+                    save_points(&client, "glukoz-rp", points).unwrap();
 //                        {
 //                        Err(e) => {
 //
@@ -85,15 +85,6 @@ pub fn to_points(series: SeriesResult, measurement: &str) -> Result<Vec<Point>, 
             Ok(point)
         })
         .collect()
-}
-
-pub fn intervals(start: NaiveDateTime, end: NaiveDateTime, step: Duration) -> IntervalIterator {
-    IntervalIterator {
-        end,
-        cur: start,
-        prev: start,
-        step,
-    }
 }
 
 pub fn pair_names() -> Vec<&'static str> {

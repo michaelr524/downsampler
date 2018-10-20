@@ -33,6 +33,15 @@ impl Iterator for IntervalIterator {
     }
 }
 
+pub fn intervals(start: NaiveDateTime, end: NaiveDateTime, step: Duration) -> IntervalIterator {
+    IntervalIterator {
+        end,
+        cur: start,
+        prev: start,
+        step,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
