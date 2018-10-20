@@ -10,44 +10,44 @@ use utils::time::truncate_seconds;
 
 #[derive(Fail, Debug)]
 pub enum Error {
-    #[fail(display = "No command has been specified", )]
+    #[fail(display = "No command has been specified",)]
     CommandMissing,
     #[fail(
-    display = "Failed to parse datetime from argument: {:?}, Error: {:?}",
-    datetime,
-    inner
+        display = "Failed to parse datetime from argument: {:?}, Error: {:?}",
+        datetime,
+        inner
     )]
     DateParseError {
         datetime: Option<String>,
         inner: Option<ParseError>,
     },
     #[fail(
-    display = "Failed to parse duration from argument: {:?}, Error: {:?}",
-    duration,
-    inner
+        display = "Failed to parse duration from argument: {:?}, Error: {:?}",
+        duration,
+        inner
     )]
     DurationParseError {
         duration: Option<String>,
         inner: Option<DurationError>,
     },
     #[fail(
-    display = "Invalid `start` argument passed. It should have this format: '2018-10-10 10:10:10'. Error: {:?}",
-    _0
+        display = "Invalid `start` argument passed. It should have this format: '2018-10-10 10:10:10'. Error: {:?}",
+        _0
     )]
     InvalidStartArgument(Box<Error>),
     #[fail(
-    display = "Invalid `end` argument passed. It should have this format: '2018-10-10 10:10:10'. Error: {:?}",
-    _0
+        display = "Invalid `end` argument passed. It should have this format: '2018-10-10 10:10:10'. Error: {:?}",
+        _0
     )]
     InvalidEndArgument(Box<Error>),
     #[fail(
-    display = "Invalid `duration` argument passed. It should have this format: '1hour 12min 5s'. Error: {:?}",
-    _0
+        display = "Invalid `duration` argument passed. It should have this format: '1hour 12min 5s'. Error: {:?}",
+        _0
     )]
     InvalidDurationArgument(Box<Error>),
     #[fail(
-    display = "Invalid `duration` argument passed. It exceeds the supported duration length. Error: {:?}",
-    _0
+        display = "Invalid `duration` argument passed. It exceeds the supported duration length. Error: {:?}",
+        _0
     )]
     DurationTooLong(OutOfRangeError),
 }

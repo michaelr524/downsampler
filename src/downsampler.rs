@@ -1,22 +1,27 @@
+use influx::Error;
 use influx::{get_range, influx_client, save_points};
 use influx_db_client::Point;
 use lttb::lttb_downsample;
+use rayon::prelude::*;
 use serde_json::Value;
+use settings::Settings;
 use std::process::exit;
 use time::Duration;
-use trade::Trade;
-use settings::Settings;
-use influx::Error;
+use trade::{pair_names, Trade};
 use utils::time::intervals;
 
 pub fn downsample(settings: &Settings) -> () {
     let client = influx_client();
 
-    for (i, (start, end)) in intervals(settings.start, settings.end, Duration::seconds(60))
-        .enumerate()
-        .take(1)
+    // Hey look, par_iter() !!
+    pair_names().par_iter().take(5).for_each(|pair_name| {
+        println!("start {}", pair_name);
+
+        for (i, (start, end)) in intervals(settings.start, settings.end, Duration::seconds(60))
+            .enumerate()
+            .take(1)
         {
-            let series = match get_range(&client, "BTCUSDT", start, end) {
+            let series = match get_range(&client, pair_name, start, end) {
                 Ok(series) => series,
                 Err(err) => match err {
                     Error::NoResult => continue,
@@ -34,11 +39,14 @@ pub fn downsample(settings: &Settings) -> () {
             let downsampled = lttb_downsample(&raw, 60);
             let points = to_points(&raw, &downsampled);
 
-            //        println!("{:#?}", points);
+            //                println!("{:#?}", &points);
 
             // TODO: handle errors
             save_points(&client, "glukoz-rp", points).unwrap();
         }
+
+        println!("end {}", pair_name);
+    });
 }
 
 pub fn to_trades(vals: &Vec<Vec<Value>>) -> Vec<Trade> {

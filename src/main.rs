@@ -13,16 +13,16 @@ extern crate influx_db_client;
 extern crate rayon;
 extern crate serde_json;
 
+mod downsampler;
 mod influx;
 mod lttb;
 mod settings;
 mod splitter;
-mod downsampler;
 mod trade;
 mod utils;
 
-use settings::{parse_args, print_settings_info, Command};
 use downsampler::downsample;
+use settings::{parse_args, print_settings_info, Command};
 use splitter::split;
 use std::process::exit;
 
