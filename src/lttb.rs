@@ -1,13 +1,18 @@
 pub trait DataPoint {
-    fn get_x(&self) -> f64;
-    fn get_y(&self) -> f64;
+    fn get_x(&self, index: usize) -> f64;
+    fn get_y(&self, index: usize) -> f64;
 }
 
 // copied from https://github.com/jeromefroe/lttb-rs/blob/master/src/lib.rs
 // modified to be generic and return references to the original data
 // instead of copying
 // TODO: verify implementation is correct
-pub fn lttb_downsample<T: DataPoint>(data: &Vec<T>, threshold: usize) -> Option<Vec<&T>> {
+pub fn lttb_downsample<T: DataPoint>(
+    data: &Vec<T>,
+    threshold: usize,
+    x_index: usize,
+    y_index: usize,
+) -> Option<Vec<&T>> {
     if threshold >= data.len() || threshold == 0 {
         return None;
     }
@@ -40,8 +45,8 @@ pub fn lttb_downsample<T: DataPoint>(data: &Vec<T>, threshold: usize) -> Option<
 
         for i in 0..(avg_range_end - avg_range_start) {
             let idx = (avg_range_start + i) as usize;
-            avg_x += data[idx].get_x();
-            avg_y += data[idx].get_y();
+            avg_x += data[idx].get_x(x_index);
+            avg_y += data[idx].get_y(y_index);
         }
         avg_x /= avg_range_length;
         avg_y /= avg_range_length;
@@ -51,8 +56,8 @@ pub fn lttb_downsample<T: DataPoint>(data: &Vec<T>, threshold: usize) -> Option<
         let range_to = (((i + 1) as f64) * every) as usize + 1;
 
         // Point a.
-        let point_a_x = data[a].get_x();
-        let point_a_y = data[a].get_y();
+        let point_a_x = data[a].get_x(x_index);
+        let point_a_y = data[a].get_y(y_index);
 
         let mut max_area = -1f64;
         let mut next_a = range_offs;
@@ -60,8 +65,8 @@ pub fn lttb_downsample<T: DataPoint>(data: &Vec<T>, threshold: usize) -> Option<
             let idx = (range_offs + i) as usize;
 
             // Calculate triangle area over three buckets.
-            let area = ((point_a_x - avg_x) * (data[idx].get_y() - point_a_y)
-                - (point_a_x - data[idx].get_x()) * (avg_y - point_a_y))
+            let area = ((point_a_x - avg_x) * (data[idx].get_y(y_index) - point_a_y)
+                - (point_a_x - data[idx].get_x(x_index)) * (avg_y - point_a_y))
                 .abs() * 0.5;
             if area > max_area {
                 max_area = area;

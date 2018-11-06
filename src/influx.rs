@@ -1,23 +1,28 @@
-use chrono::NaiveDateTime;
 use influx_db_client::error;
 use influx_db_client::Points;
 use influx_db_client::{Client, Node, Point, Precision, Value as InfluxValue};
 use serde_json::Value;
+use settings::Field;
+use settings::FieldDataType;
+
+#[derive(Debug, Deserialize)]
+pub enum FieldValue {
+    Float(f64),
+    Integer(i64),
+    Boolean(bool),
+    String(String),
+}
 
 #[derive(Fail, Debug)]
 pub enum Error {
     #[fail(display = "Failed to access InfluxDB: Error: {:?}", _0)]
     InfluxDbAccessError(error::Error),
-    #[fail(display = "InfluxDB query didn't return a result.",)]
+    #[fail(display = "InfluxDB query didn't return a result.", )]
     NoResult,
-    #[fail(display = "Valid timestamp wasn't found InfluxDB result record.",)]
+    #[fail(display = "Valid timestamp wasn't found InfluxDB result record.", )]
     CouldNotFindTimestamp,
-    #[fail(display = "InfluxDB returned a field with null value.",)]
-    UnexpectedNullFieldValue,
-    #[fail(display = "InfluxDB returned a field with a data type that we didn't expect.",)]
-    UnexpectedDataType,
-    #[fail(display = "InfluxDB returned a numeric field with a data type that we didn't expect.",)]
-    UnexpectedNumberDataType,
+    #[fail(display = "InfluxDB returned a field with null value.", )]
+    UnexpectedDataType(String, Value),
 }
 
 pub struct SeriesResult {
@@ -25,26 +30,8 @@ pub struct SeriesResult {
     pub columns: Vec<String>,
 }
 
-pub fn influx_client() -> Client {
-    Client::new("http://localhost:8086", "glukoz").set_authentication("root", "root")
-}
-
-// pass `limit: 0` to disable limit
-pub fn build_query(pair: &str, start: i64, end: i64, limit: i64) -> String {
-    format!(
-        r#"select price, amount
-from glukoz."glukoz-rentention-policy".trade
-WHERE feed_id = 'binance'
-      AND pair = '{pair}'
-      AND time >= {start}
-      AND time < {end}
-      limit {limit}
-      "#,
-        start = start,
-        end = end,
-        limit = limit,
-        pair = pair
-    )
+pub fn influx_client(url: &str, db_name: &str, username: &str, pass: &str) -> Client {
+    Client::new(url, db_name).set_authentication(username, pass)
 }
 
 pub fn run_query(client: &Client, query: &str) -> Result<Option<Vec<Node>>, error::Error> {
@@ -74,15 +61,65 @@ pub fn first_series_from_result(
     })
 }
 
-pub fn get_range(
-    client: &Client,
-    pair_name: &str,
-    start: NaiveDateTime,
-    end: NaiveDateTime,
-) -> Result<SeriesResult, Error> {
-    let query = build_query(pair_name, start.timestamp_nanos(), end.timestamp_nanos(), 0);
-    let res = run_query(&client, &query);
+pub fn get_range(client: &Client, query_str: &str) -> Result<SeriesResult, Error> {
+    let res = run_query(&client, query_str);
     first_series_from_result(res)
+}
+
+pub fn from_json_values(
+    vals: Vec<Vec<Value>>,
+    fields: &Vec<Field>,
+) -> Result<Vec<Vec<FieldValue>>, Error> {
+    vals.iter()
+        .map(|vec| {
+            vec.iter()
+                .zip(fields.iter())
+                .map(|(v, field)| {
+                    match field.data_type {
+                        FieldDataType::Float => {
+                            let val = v.as_f64().ok_or_else(|| {
+                                Error::UnexpectedDataType(field.name.clone(), v.clone())
+                            })?;
+                            Ok(FieldValue::Float(val))
+                        }
+                        FieldDataType::Integer => {
+                            let val = v.as_i64().ok_or_else(|| {
+                                Error::UnexpectedDataType(field.name.clone(), v.clone())
+                            })?;
+                            Ok(FieldValue::Integer(val))
+                        }
+                        FieldDataType::Boolean => {
+                            let val = v.as_bool().ok_or_else(|| {
+                                Error::UnexpectedDataType(field.name.clone(), v.clone())
+                            })?;
+                            Ok(FieldValue::Boolean(val))
+                        }
+                        FieldDataType::String => {
+                            match v {
+                                Value::String(s) => Ok(FieldValue::String(s.to_owned())), // TODO: remove this clone
+                                _ => Err(Error::UnexpectedDataType(field.name.clone(), v.clone())),
+                            }
+                        }
+                    }
+                })
+                .collect()
+        })
+        .collect()
+}
+
+pub fn extract_float_value(val: &FieldValue) -> f64 {
+    match val {
+        FieldValue::Integer(val) => *val as f64,
+        FieldValue::Float(val) => *val,
+        _ => panic!("Unexpected type"),
+    }
+}
+
+pub fn extract_int_value(val: &FieldValue) -> i64 {
+    match val {
+        FieldValue::Integer(val) => *val,
+        _ => panic!("Unexpected type"),
+    }
 }
 
 pub fn extract_timestamp(record: &Vec<Value>) -> Result<i64, Error> {
@@ -93,32 +130,17 @@ pub fn extract_timestamp(record: &Vec<Value>) -> Result<i64, Error> {
         .ok_or_else(|| Error::CouldNotFindTimestamp)?)
 }
 
-pub fn json_val_to_influx_val(val: &Value) -> Result<InfluxValue, Error> {
-    let influx_val = match val {
-        Value::Null => return Err(Error::UnexpectedNullFieldValue),
-        Value::Bool(val) => InfluxValue::Boolean(*val),
-        Value::Number(val) => {
-            // TODO: handle generically. currently converts all numbers to floats, because some
-            // of the values in float columns returned as integers (maybe because of JSON, or maybe
-            // they are written using the wrong type)
-            //            if val.is_f64() {
-            //                // safe because we've checked with .is_f64()
-            //                InfluxValue::Float(val.as_f64().unwrap())
-            //            } else if val.is_i64() {
-            //                // safe because we've checked with .is_i64()
-            //                InfluxValue::Integer(val.as_i64().unwrap())
-            if val.is_f64() || val.is_i64() {
-                // safe because we've checked with .is_i64() and is_f64()
-                InfluxValue::Float(val.as_f64().unwrap())
-            } else {
-                return Err(Error::UnexpectedNumberDataType);
-            }
-        }
-        Value::String(val) => InfluxValue::String(val.to_owned()),
-        _ => return Err(Error::UnexpectedDataType),
-    };
-
-    Ok(influx_val)
+pub fn field_val_to_influx_val(val: &FieldValue) -> InfluxValue {
+    match val {
+        FieldValue::Integer(val) => InfluxValue::Integer(*val),
+        FieldValue::Float(val) => InfluxValue::Float(*val),
+        FieldValue::Boolean(val) => InfluxValue::Boolean(*val),
+        FieldValue::String(val) => InfluxValue::String(val.to_owned()),
+        // TODO: how to get rid of this clone?
+        // looks like the options are:
+        // 1. to move instead of borrowing, which complicates the caller side, where we don't necessary want to consume these values.
+        // 2. add lifetime annotations to InfluxValue and any function that handles an InfluxValue, which makes the code look less readable
+    }
 }
 
 pub fn save_points(

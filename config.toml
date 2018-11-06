@@ -1,39 +1,40 @@
-use influx_db_client::{Point, Value};
-use lttb::DataPoint;
+[influxdb]
+url = "http://localhost:8086"
+db = "glukoz"
+retention_policy = "glukoz-rp"
+username = "root"
+pass = "root"
 
-#[derive(Debug, PartialEq)]
-pub struct Trade {
-    pub price: f64,
-    pub amount: f64,
-    pub timestamp: i64,
-}
+[downsampler]
+measurement_template = "trades_binance_{{id}}_{{time_interval}}"
+query_template = """
+select price, amount
+from glukoz."glukoz-rp".trades_binance_{{id}}_{{time_interval}}
+WHERE time >= {{start}} AND time < {{end}}
+limit {{limit}}
+"""
+x_field_index = 0
+y_field_index = 1
+fields = [
+  {name = "timestamp", data_type = "integer"},
+  {name = "price", data_type = "float"},
+  {name = "amount", data_type = "float"},
+]
 
-impl DataPoint for Trade {
-    fn get_x(&self) -> f64 {
-        self.timestamp as f64
-    }
+[splitter]
+measurement_template = "trades_binance_{{id}}_raw"
+query_template = """
+select price, amount
+from glukoz."glukoz-rentention-policy".trade
+WHERE feed_id = 'binance'
+      AND pair = '{{id}}'
+      AND time >= {{start}}
+      AND time < {{end}}
+      limit {{limit}}
+"""
 
-    fn get_y(&self) -> f64 {
-        self.price
-    }
-}
-
-impl Trade {
-    pub fn to_point(&self, measurement: &str) -> Point {
-        let mut point = Point::new(measurement);
-
-        point
-            .add_timestamp(self.timestamp)
-            .add_field("amount", Value::Float(self.amount))
-            .add_field("price", Value::Float(self.price));
-
-        point
-    }
-}
-
-pub fn pair_names() -> Vec<&'static str> {
-    vec![
-        "QSPBNB", "HOTBTC", "POEBTC", "XMRETH", "PHXBTC", "STORMBTC", "SCBNB", "ONTETH", "AEBNB",
+[vars]
+ids = [ "QSPBNB", "HOTBTC", "POEBTC", "XMRETH", "PHXBTC", "STORMBTC", "SCBNB", "ONTETH", "AEBNB",
         "KMDBTC", "STEEMBTC", "NCASHBTC", "XLMETH", "NXSBNB", "STEEMETH", "OSTBNB", "ZILBTC",
         "OSTETH", "LSKBNB", "POWRBTC", "DATAETH", "RLCBTC", "CVCETH", "VENUSDT", "AMBETH",
         "WABIBTC", "VETBTC", "TNTETH", "WINGSETH", "NPXSBTC", "THETAETH", "NCASHBNB", "PIVXETH",
@@ -80,6 +81,4 @@ pub fn pair_names() -> Vec<&'static str> {
         "AIONETH", "RPXETH", "PHXETH", "GNTBNB", "MTLETH", "FUELETH", "HOTETH", "EVXBTC",
         "DASHBTC", "XRPETH", "GASBTC", "ENGBTC", "DOCKBTC", "XRPBTC", "STORMETH", "DLTBTC",
         "DENTBTC", "BATBNB", "NAVBNB", "IOSTETH", "AIONBNB", "SNMETH", "DNTBTC", "APPCETH",
-        "QLCBTC", "ASTETH", "BTGBTC", "VETETH", "IOTAUSDT",
-    ]
-}
+        "QLCBTC", "ASTETH", "BTGBTC", "VETETH", "IOTAUSDT",]
