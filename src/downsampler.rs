@@ -24,14 +24,14 @@ pub fn downsample(args: &CmdArgs, config: &Config) -> () {
         &config.influxdb.pass,
     );
 
-    let template = Template::new(&config.downsampler.measurement_template);
+    let measurement_template = Template::new(&config.downsampler.measurement_template);
     let query_template = Template::new(&config.downsampler.query_template);
 
     //    Hey look, par_iter() !!
     config.vars.ids.par_iter().take(16).for_each(|id| {
         println!("start {}", id);
 
-        let measurement_name = make_measurement_name(&template, id, "seconds");
+        let measurement_name = make_measurement_name(&measurement_template, id, "seconds");
 
         for (start, end)
 //            (_i, (start, end))

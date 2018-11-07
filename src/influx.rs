@@ -70,9 +70,9 @@ pub fn from_json_values(
     vals: Vec<Vec<Value>>,
     fields: &Vec<Field>,
 ) -> Result<Vec<Vec<FieldValue>>, Error> {
-    vals.iter()
+    vals.into_iter()
         .map(|vec| {
-            vec.iter()
+            vec.into_iter()
                 .zip(fields.iter())
                 .map(|(v, field)| {
                     match field.data_type {
@@ -96,7 +96,7 @@ pub fn from_json_values(
                         }
                         FieldDataType::String => {
                             match v {
-                                Value::String(s) => Ok(FieldValue::String(s.to_owned())), // TODO: remove this clone
+                                Value::String(s) => Ok(FieldValue::String(s)),
                                 _ => Err(Error::UnexpectedDataType(field.name.clone(), v.clone())),
                             }
                         }
@@ -138,8 +138,9 @@ pub fn field_val_to_influx_val(val: &FieldValue) -> InfluxValue {
         FieldValue::String(val) => InfluxValue::String(val.to_owned()),
         // TODO: how to get rid of this clone?
         // looks like the options are:
-        // 1. to move instead of borrowing, which complicates the caller side, where we don't necessary want to consume these values.
-        // 2. add lifetime annotations to InfluxValue and any function that handles an InfluxValue, which makes the code look less readable
+        // 1. to move instead of borrowing, which complicates the caller side, where we don't necessary want to consume these values. or maybe even we can't move them because they are already borrowed by the downsampling function.
+        // 2. patch the influx lib to have &str in the string type instead of String
+        // 3. patch the influx lib to return results as InfluxValue
     }
 }
 
