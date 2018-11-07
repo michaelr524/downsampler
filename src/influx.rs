@@ -2,8 +2,8 @@ use influx_db_client::error;
 use influx_db_client::Points;
 use influx_db_client::{Client, Node, Point, Precision, Value as InfluxValue};
 use serde_json::Value;
-use settings::Field;
-use settings::FieldDataType;
+use crate::settings::Field;
+use crate::settings::FieldDataType;
 
 #[derive(Debug, Deserialize)]
 pub enum FieldValue {

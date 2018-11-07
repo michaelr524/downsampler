@@ -6,7 +6,7 @@ use clap::SubCommand;
 use clap::{App, Arg};
 use humantime::{parse_duration as human_parse_duration, DurationError};
 use time::{Duration, OutOfRangeError};
-use utils::time::truncate_seconds;
+use crate::utils::time::truncate_seconds;
 
 #[derive(Fail, Debug)]
 pub enum Error {

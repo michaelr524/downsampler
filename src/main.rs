@@ -26,11 +26,11 @@ mod settings;
 mod splitter;
 mod utils;
 
-use cmdargs::{parse_args, print_args_info, Command};
-use downsampler::downsample;
-use settings::config_from_file;
-use splitter::split;
-use utils::error::print_err_and_exit;
+use crate::cmdargs::{parse_args, print_args_info, Command};
+use crate::downsampler::downsample;
+use crate::settings::config_from_file;
+use crate::splitter::split;
+use crate::utils::error::print_err_and_exit;
 
 fn main() {
     let args = parse_args().unwrap_or_else(|e| print_err_and_exit(e));

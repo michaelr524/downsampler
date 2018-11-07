@@ -1,17 +1,17 @@
 use chrono::NaiveDateTime;
-use cmdargs::CmdArgs;
-use influx::{
+use crate::cmdargs::CmdArgs;
+use crate::influx::{
     extract_timestamp, get_range, influx_client, field_val_to_influx_val, save_points, Error,
     SeriesResult,
 };
 use influx_db_client::Point;
 use rayon::prelude::*;
-use settings::Config;
+use crate::settings::Config;
 use std::collections::HashMap;
 use std::process::exit;
 use string_template::Template;
 use time::Duration;
-use utils::time::intervals;
+use crate::utils::time::intervals;
 
 //#[derive(Fail, Debug)]
 //pub enum Error {
