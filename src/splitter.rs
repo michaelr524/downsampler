@@ -1,15 +1,16 @@
 use chrono::NaiveDateTime;
 use crate::cmdargs::CmdArgs;
-use crate::influx::{
-    extract_timestamp, field_val_to_influx_val, get_range, influx_client, save_points, Error,
-    SeriesResult,
-};
+use crate::influx::from_json_values;
+use crate::influx::to_point;
+use crate::influx::FieldValue;
+use crate::influx::{get_range, influx_client, save_points, Error};
 use crate::settings::Config;
+use crate::settings::Field;
+use crate::utils::error::print_err_and_exit;
 use crate::utils::time::intervals;
 use influx_db_client::Point;
 use rayon::prelude::*;
 use std::collections::HashMap;
-use std::process::exit;
 use string_template::Template;
 use time::Duration;
 
@@ -51,10 +52,7 @@ pub fn split(args: &CmdArgs, config: &Config) -> () {
                         Ok(series) => series,
                         Err(err) => match err {
                             Error::NoResult => continue,
-                            e => {
-                                println!("Error: {}", e);
-                                exit(-1)
-                            }
+                            e => print_err_and_exit(e)
                         },
                     };
 
@@ -62,10 +60,10 @@ pub fn split(args: &CmdArgs, config: &Config) -> () {
 
 //                    println!("{} - [{} - {}] ({})", i, start, end, count);
 
-                    let points = to_points(series, &measurement_name).unwrap_or_else(|e| {
-                        println!("Error: {}", e);
-                        exit(-1)
-                    });
+                    let vals = from_json_values(series.values, &config.splitter.fields)
+                        .unwrap_or_else(|e| print_err_and_exit(e));
+
+                    let points = to_points(&vals, &measurement_name, &config.splitter.fields);
 
 //                println!("{:#?}", points);
 
@@ -82,28 +80,13 @@ pub fn split(args: &CmdArgs, config: &Config) -> () {
         });
 }
 
-pub fn to_points(series: SeriesResult, measurement: &str) -> Result<Vec<Point>, Error> {
-    series
-        .values
-        .iter()
-        .map(|record| {
-            let mut point = Point::new(measurement);
-
-            let ts = extract_timestamp(&record)?;
-            point.add_timestamp(ts);
-
-            for (val, column_name) in record
-                .into_iter()
-                .skip(1)
-                .zip(series.columns.iter().skip(1))
-            {
-                // TODO: fix this to use the same as downsampler
-                //                let influx_val = json_val_to_influx_val(val)?;
-                //                point.add_field(column_name, influx_val);
-            }
-
-            Ok(point)
-        })
+pub fn to_points(
+    vals: &Vec<Vec<FieldValue>>,
+    measurement: &str,
+    fields: &Vec<Field>,
+) -> Vec<Point> {
+    vals.iter()
+        .map(|record| to_point(record, measurement, fields))
         .collect()
 }
 

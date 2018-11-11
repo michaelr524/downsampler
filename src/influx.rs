@@ -17,8 +17,6 @@ pub enum Error {
     InfluxDbAccessError(error::Error),
     #[fail(display = "InfluxDB query didn't return a result.")]
     NoResult,
-    #[fail(display = "Valid timestamp wasn't found InfluxDB result record.")]
-    CouldNotFindTimestamp,
     #[fail(display = "InfluxDB returned a field with null value.")]
     UnexpectedDataType(String, Value),
 }
@@ -116,14 +114,6 @@ pub fn extract_int_value(val: &FieldValue) -> i64 {
     }
 }
 
-pub fn extract_timestamp(record: &Vec<Value>) -> Result<i64, Error> {
-    Ok(record
-        .first()
-        .ok_or_else(|| Error::CouldNotFindTimestamp)?
-        .as_i64()
-        .ok_or_else(|| Error::CouldNotFindTimestamp)?)
-}
-
 pub fn field_val_to_influx_val(val: &FieldValue) -> InfluxValue {
     match val {
         FieldValue::Integer(val) => InfluxValue::Integer(*val),
@@ -136,6 +126,20 @@ pub fn field_val_to_influx_val(val: &FieldValue) -> InfluxValue {
         // 2. patch the influx lib to have &str in the string type instead of String
         // 3. patch the influx lib to return results as InfluxValue
     }
+}
+
+pub fn to_point(v: &Vec<FieldValue>, measurement: &str, fields: &Vec<Field>) -> Point {
+    let mut point = Point::new(measurement);
+
+    let timestamp = extract_int_value(&v[0]);
+    point.add_timestamp(timestamp);
+
+    for (val, field) in v.iter().skip(1).zip(fields.iter()) {
+        let influx_val = field_val_to_influx_val(val);
+        point.add_field(&field.name, influx_val);
+    }
+
+    point
 }
 
 pub fn save_points(

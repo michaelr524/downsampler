@@ -2,8 +2,8 @@ use chrono::NaiveDateTime;
 use crate::{
     cmdargs::CmdArgs,
     influx::{
-        extract_float_value, extract_int_value, field_val_to_influx_val, from_json_values,
-        get_range, influx_client, save_points, Error, FieldValue,
+        extract_float_value, from_json_values, get_range, influx_client, save_points, to_point,
+        Error, FieldValue,
     },
     lttb::{lttb_downsample, DataPoint},
     settings::{Config, Field},
@@ -131,18 +131,4 @@ impl DataPoint for Vec<FieldValue> {
         let field_value = self.get(index).unwrap();
         extract_float_value(field_value)
     }
-}
-
-pub fn to_point(v: &Vec<FieldValue>, measurement: &str, fields: &Vec<Field>) -> Point {
-    let mut point = Point::new(measurement);
-
-    let timestamp = extract_int_value(&v[0]);
-    point.add_timestamp(timestamp);
-
-    for (val, field) in v.iter().skip(1).zip(fields.iter()) {
-        let influx_val = field_val_to_influx_val(val);
-        point.add_field(&field.name, influx_val);
-    }
-
-    point
 }

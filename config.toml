@@ -32,6 +32,11 @@ WHERE feed_id = 'binance'
       AND time < {{end}}
       limit {{limit}}
 """
+fields = [
+  {name = "timestamp", data_type = "integer"},
+  {name = "price", data_type = "float"},
+  {name = "amount", data_type = "float"},
+]
 
 [vars]
 ids = [ "QSPBNB", "HOTBTC", "POEBTC", "XMRETH", "PHXBTC", "STORMBTC", "SCBNB", "ONTETH", "AEBNB",

@@ -65,6 +65,7 @@ pub struct Downsampler {
 pub struct Splitter {
     pub measurement_template: String,
     pub query_template: String,
+    pub fields: Vec<Field>,
 }
 
 #[derive(Debug, Deserialize)]
