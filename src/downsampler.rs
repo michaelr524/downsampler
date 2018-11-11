@@ -1,20 +1,19 @@
 use chrono::NaiveDateTime;
-use crate::cmdargs::CmdArgs;
-use crate::influx::FieldValue;
-use crate::influx::{
-    extract_float_value, extract_int_value, from_json_values, get_range, influx_client, field_val_to_influx_val,
-    save_points, Error,
+use crate::{
+    cmdargs::CmdArgs,
+    influx::{
+        extract_float_value, extract_int_value, field_val_to_influx_val, from_json_values,
+        get_range, influx_client, save_points, Error, FieldValue,
+    },
+    lttb::{lttb_downsample, DataPoint},
+    settings::{Config, Field},
+    utils::{error::print_err_and_exit, time::intervals},
 };
 use influx_db_client::Point;
-use crate::lttb::{lttb_downsample, DataPoint};
 use rayon::prelude::*;
-use crate::settings::Config;
-use crate::settings::Field;
 use std::collections::HashMap;
 use string_template::Template;
 use time::Duration;
-use crate::utils::error::print_err_and_exit;
-use crate::utils::time::intervals;
 
 pub fn downsample(args: &CmdArgs, config: &Config) -> () {
     let client = influx_client(

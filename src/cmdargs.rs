@@ -1,21 +1,17 @@
-use chrono::format::ParseError;
-use chrono::offset::TimeZone;
-use chrono::{NaiveDateTime, Utc};
-use clap::ArgGroup;
-use clap::SubCommand;
-use clap::{App, Arg};
+use chrono::{format::ParseError, offset::TimeZone, NaiveDateTime, Utc};
+use clap::{crate_version, App, Arg, ArgGroup, SubCommand};
+use crate::utils::time::truncate_seconds;
+use failure_derive::Fail;
 use humantime::{parse_duration as human_parse_duration, DurationError};
 use time::{Duration, OutOfRangeError};
-use crate::utils::time::truncate_seconds;
 
 #[derive(Fail, Debug)]
 pub enum Error {
-    #[fail(display = "No command has been specified",)]
+    #[fail(display = "No command has been specified")]
     CommandMissing,
     #[fail(
         display = "Failed to parse datetime from argument: {:?}, Error: {:?}",
-        datetime,
-        inner
+        datetime, inner
     )]
     DateParseError {
         datetime: Option<String>,
@@ -23,8 +19,7 @@ pub enum Error {
     },
     #[fail(
         display = "Failed to parse duration from argument: {:?}, Error: {:?}",
-        duration,
-        inner
+        duration, inner
     )]
     DurationParseError {
         duration: Option<String>,
@@ -181,10 +176,11 @@ fn parse_duration(date_string: Option<&str>) -> Result<Duration, Error> {
         duration: date_string.map_or(None, |s| Some(s.to_string())),
     })?;
 
-    let duration_std = human_parse_duration(duration_str).map_err(|e| Error::DurationParseError {
-        inner: Some(e),
-        duration: date_string.map_or(None, |s| Some(s.to_string())),
-    })?;
+    let duration_std =
+        human_parse_duration(duration_str).map_err(|e| Error::DurationParseError {
+            inner: Some(e),
+            duration: date_string.map_or(None, |s| Some(s.to_string())),
+        })?;
 
     Duration::from_std(duration_std).map_err(|e| Error::DurationTooLong(e))
 }

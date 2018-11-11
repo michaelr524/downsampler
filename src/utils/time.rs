@@ -1,8 +1,4 @@
-use chrono::Datelike;
-use chrono::NaiveDateTime;
-use chrono::TimeZone;
-use chrono::Timelike;
-use chrono::Utc;
+use chrono::{Datelike, NaiveDateTime, TimeZone, Timelike, Utc};
 use time::Duration;
 
 pub fn truncate_seconds(dt: NaiveDateTime) -> NaiveDateTime {

@@ -1,7 +1,5 @@
 use config::{Config as Conf, ConfigError, File};
-use serde::de::Error as SerdeError;
-use serde::Deserialize;
-use serde::Deserializer;
+use serde::{de::Error as SerdeError, Deserialize, Deserializer};
 
 #[derive(Debug, Deserialize)]
 pub enum FieldDataType {

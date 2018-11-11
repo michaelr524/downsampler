@@ -1,17 +1,17 @@
 use chrono::NaiveDateTime;
 use crate::cmdargs::CmdArgs;
 use crate::influx::{
-    extract_timestamp, get_range, influx_client, field_val_to_influx_val, save_points, Error,
+    extract_timestamp, field_val_to_influx_val, get_range, influx_client, save_points, Error,
     SeriesResult,
 };
+use crate::settings::Config;
+use crate::utils::time::intervals;
 use influx_db_client::Point;
 use rayon::prelude::*;
-use crate::settings::Config;
 use std::collections::HashMap;
 use std::process::exit;
 use string_template::Template;
 use time::Duration;
-use crate::utils::time::intervals;
 
 //#[derive(Fail, Debug)]
 //pub enum Error {
@@ -29,8 +29,11 @@ pub fn split(args: &CmdArgs, config: &Config) -> () {
     let query_template = Template::new(&config.splitter.query_template);
 
     // Hey look, par_iter() !!
-    config.vars.ids.par_iter()
-//        .take(1)
+    config
+        .vars
+        .ids
+        .par_iter()
+        //        .take(1)
         .for_each(|id| {
             println!("start {}", id);
 

@@ -1,9 +1,7 @@
-use influx_db_client::error;
-use influx_db_client::Points;
-use influx_db_client::{Client, Node, Point, Precision, Value as InfluxValue};
+use crate::{settings::Field, settings::FieldDataType};
+use failure_derive::Fail;
+use influx_db_client::{error, Client, Node, Point, Points, Precision, Value as InfluxValue};
 use serde_json::Value;
-use crate::settings::Field;
-use crate::settings::FieldDataType;
 
 #[derive(Debug, Deserialize)]
 pub enum FieldValue {
@@ -17,11 +15,11 @@ pub enum FieldValue {
 pub enum Error {
     #[fail(display = "Failed to access InfluxDB: Error: {:?}", _0)]
     InfluxDbAccessError(error::Error),
-    #[fail(display = "InfluxDB query didn't return a result.", )]
+    #[fail(display = "InfluxDB query didn't return a result.")]
     NoResult,
-    #[fail(display = "Valid timestamp wasn't found InfluxDB result record.", )]
+    #[fail(display = "Valid timestamp wasn't found InfluxDB result record.")]
     CouldNotFindTimestamp,
-    #[fail(display = "InfluxDB returned a field with null value.", )]
+    #[fail(display = "InfluxDB returned a field with null value.")]
     UnexpectedDataType(String, Value),
 }
 
@@ -74,33 +72,29 @@ pub fn from_json_values(
         .map(|vec| {
             vec.into_iter()
                 .zip(fields.iter())
-                .map(|(v, field)| {
-                    match field.data_type {
-                        FieldDataType::Float => {
-                            let val = v.as_f64().ok_or_else(|| {
-                                Error::UnexpectedDataType(field.name.clone(), v.clone())
-                            })?;
-                            Ok(FieldValue::Float(val))
-                        }
-                        FieldDataType::Integer => {
-                            let val = v.as_i64().ok_or_else(|| {
-                                Error::UnexpectedDataType(field.name.clone(), v.clone())
-                            })?;
-                            Ok(FieldValue::Integer(val))
-                        }
-                        FieldDataType::Boolean => {
-                            let val = v.as_bool().ok_or_else(|| {
-                                Error::UnexpectedDataType(field.name.clone(), v.clone())
-                            })?;
-                            Ok(FieldValue::Boolean(val))
-                        }
-                        FieldDataType::String => {
-                            match v {
-                                Value::String(s) => Ok(FieldValue::String(s)),
-                                _ => Err(Error::UnexpectedDataType(field.name.clone(), v.clone())),
-                            }
-                        }
+                .map(|(v, field)| match field.data_type {
+                    FieldDataType::Float => {
+                        let val = v.as_f64().ok_or_else(|| {
+                            Error::UnexpectedDataType(field.name.clone(), v.clone())
+                        })?;
+                        Ok(FieldValue::Float(val))
                     }
+                    FieldDataType::Integer => {
+                        let val = v.as_i64().ok_or_else(|| {
+                            Error::UnexpectedDataType(field.name.clone(), v.clone())
+                        })?;
+                        Ok(FieldValue::Integer(val))
+                    }
+                    FieldDataType::Boolean => {
+                        let val = v.as_bool().ok_or_else(|| {
+                            Error::UnexpectedDataType(field.name.clone(), v.clone())
+                        })?;
+                        Ok(FieldValue::Boolean(val))
+                    }
+                    FieldDataType::String => match v {
+                        Value::String(s) => Ok(FieldValue::String(s)),
+                        _ => Err(Error::UnexpectedDataType(field.name.clone(), v.clone())),
+                    },
                 })
                 .collect()
         })
