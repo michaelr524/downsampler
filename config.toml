@@ -20,6 +20,17 @@ fields = [
   {name = "price", data_type = "float"},
   {name = "amount", data_type = "float"},
 ]
+intervals = [
+    "1s",   # 1 point/1  sec       on average
+    "1m",   # 1 point/1  minute    on average
+    "5m",   # 1 point/5  minute    on average
+    "10m",  # 1 point/10 minute    on average
+    "15m",  # 1 point/15 minute    on average
+    "30m",  # 1 point/30 minute    on average
+    "1h",   # 1 point/1  hour      on average
+    "3h",   # 1 point/3  hour      on average
+    "12h",  # 1 point/12 hour      on average
+]
 
 [splitter]
 measurement_template = "trades_binance_{{id}}_raw"

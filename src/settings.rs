@@ -1,5 +1,6 @@
 use config::{Config as Conf, ConfigError, File};
-use serde::{de::Error as SerdeError, Deserialize, Deserializer};
+use humantime::parse_duration;
+use serde::{de::Error as DeserError, Deserialize, Deserializer};
 
 #[derive(Debug, Deserialize)]
 pub enum FieldDataType {
@@ -23,7 +24,7 @@ impl FieldDataType {
             "integer" => Ok(FieldDataType::Integer),
             "boolean" => Ok(FieldDataType::Boolean),
             "string" => Ok(FieldDataType::String),
-            val @ _ => Err(SerdeError::custom(format!(
+            val @ _ => Err(DeserError::custom(format!(
                 "Unrecognized field data type: {:?}",
                 val
             ))),
@@ -53,12 +54,44 @@ pub struct Vars {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Interval {
+    pub name: String,
+    pub duration_secs: u64,
+}
+
+// convert interval strings into u64 seconds interval periods
+fn deserialize_intervals<'de, D>(de: D) -> Result<Vec<Interval>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let v: Vec<String> = Vec::<String>::deserialize(de)?;
+
+    v.into_iter()
+        .map(|s| {
+            let duration_std = parse_duration(&s).map_err(|e| {
+                DeserError::custom(format!(
+                    "Error parsing interval duration: {:?} ({:?})",
+                    &s, &e
+                ))
+            })?;
+
+            Ok(Interval {
+                duration_secs: duration_std.as_secs() * 60,
+                name: s,
+            })
+        })
+        .collect()
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Downsampler {
     pub measurement_template: String,
     pub query_template: String,
     pub x_field_index: usize,
     pub y_field_index: usize,
     pub fields: Vec<Field>,
+    #[serde(deserialize_with = "deserialize_intervals")]
+    pub intervals: Vec<Interval>,
 }
 
 #[derive(Debug, Deserialize)]
