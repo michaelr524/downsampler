@@ -134,7 +134,7 @@ pub fn to_point(v: &Vec<FieldValue>, measurement: &str, fields: &Vec<Field>) -> 
     let timestamp = extract_int_value(&v[0]);
     point.add_timestamp(timestamp);
 
-    for (val, field) in v.iter().skip(1).zip(fields.iter()) {
+    for (val, field) in v.iter().skip(1).zip(fields.iter().skip(1)) {
         let influx_val = field_val_to_influx_val(val);
         point.add_field(&field.name, influx_val);
     }
@@ -152,5 +152,6 @@ pub fn save_points(
         Some(Precision::Nanoseconds),
         Some(retention_policy),
     )?;
+
     Ok(())
 }

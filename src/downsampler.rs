@@ -14,10 +14,10 @@ use influx_db_client::Point;
 use lazy_static::lazy_static;
 use rayon::prelude::*;
 use std::collections::HashMap;
+use std::ops::Sub;
+use std::time::Duration as StdDuration;
 use string_template::Template;
 use time::Duration;
-use std::time::Duration as StdDuration;
-use std::ops::{Sub};
 
 lazy_static! {
     static ref UNIX_EPOCH: NaiveDateTime = Utc.timestamp(0, 0).naive_utc();
@@ -56,7 +56,7 @@ pub fn downsample(args: &CmdArgs, config: &Config) -> () {
     config.vars.ids.par_iter().for_each(|id| {
         println!("start {}", id);
 
-        for (start, end) in intervals(args.start, args.end, Duration::seconds(1)) {
+        for (start, _end) in intervals(args.start, args.end, Duration::seconds(1)) {
             for interval_period in config.downsampler.intervals.iter() {
                 if start.signed_duration_since(*UNIX_EPOCH).num_seconds()
                     % (interval_period.duration_secs as i64)
