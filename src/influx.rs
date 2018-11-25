@@ -128,7 +128,7 @@ pub fn field_val_to_influx_val(val: &FieldValue) -> InfluxValue {
     }
 }
 
-pub fn to_point(v: &Vec<FieldValue>, measurement: &str, fields: &Vec<Field>) -> Point {
+pub fn to_point(v: &[FieldValue], measurement: &str, fields: &[Field]) -> Point {
     let mut point = Point::new(measurement);
 
     let timestamp = extract_int_value(&v[0]);

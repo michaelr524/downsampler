@@ -8,7 +8,7 @@ pub trait DataPoint {
 // instead of copying
 // TODO: verify implementation is correct
 pub fn lttb_downsample<T: DataPoint>(
-    data: &Vec<T>,
+    data: &[T],
     threshold: usize,
     x_index: usize,
     y_index: usize,

@@ -61,21 +61,21 @@ pub fn downsample(args: &CmdArgs, config: &Config) -> () {
                 if start.signed_duration_since(*UNIX_EPOCH).num_seconds()
                     % (interval_period.duration_secs as i64)
                     == 0
-                {
-                    let measurement_name = measurements
-                        .get(&(interval_period.duration_secs, id))
-                        .unwrap();
+                    {
+                        let measurement_name = measurements
+                            .get(&(interval_period.duration_secs, id))
+                            .unwrap();
 
-                    downsample_period(
-                        config,
-                        &client,
-                        &query_template,
-                        id,
-                        start,
-                        interval_period.duration_secs,
-                        measurement_name,
-                    );
-                }
+                        downsample_period(
+                            config,
+                            &client,
+                            &query_template,
+                            id,
+                            start,
+                            interval_period.duration_secs,
+                            measurement_name,
+                        );
+                    }
             }
         }
 
@@ -121,9 +121,9 @@ pub fn downsample_period(
 
 pub fn to_influx_points(
     measurement_name: &str,
-    raw: &Vec<Vec<FieldValue>>,
+    raw: &[Vec<FieldValue>],
     downsampled: &Option<Vec<&Vec<FieldValue>>>,
-    fields: &Vec<Field>,
+    fields: &[Field],
 ) -> Vec<Point> {
     match downsampled {
         Some(downsampled) => downsampled
