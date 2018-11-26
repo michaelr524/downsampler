@@ -2,6 +2,7 @@
 name = "downsampler"
 version = "0.1.0"
 authors = ["Michael Ravits <michael@xlucidity.com>"]
+license = "MIT"
 edition = "2018"
 
 [dependencies]
