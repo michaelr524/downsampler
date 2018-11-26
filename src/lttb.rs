@@ -5,7 +5,7 @@ pub trait DataPoint {
 
 // copied from https://github.com/jeromefroe/lttb-rs/blob/master/src/lib.rs
 // modified to be generic and return references to the original data
-// instead of copying
+// instead of cosuming
 // TODO: verify implementation is correct
 pub fn lttb_downsample<T: DataPoint>(
     data: &[T],

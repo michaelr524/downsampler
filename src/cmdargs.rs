@@ -102,7 +102,7 @@ years, year, y -- defined as 365.25 days
 
     App::new("Downsampler")
         .version(crate_version!())
-        .author("Michael Ravits. <michael@xlucidity.com>")
+        .author("Michael Ravits <michael@xlucidity.com>")
         .about("Utilities for transforming InfluxDB time series data")
         .bin_name("downsampler")
         .subcommand(
