@@ -1,3 +1,14 @@
+[listen]
+redis_url = "redis://127.0.0.1:6379"
+poll_sleep_ms = 250
+measurement_template = "trades_{{id}}_{{time_interval}}"
+query_template = """
+select price, amount
+from glukoz."glukoz-rp".trades_{{id}}_{{time_interval}}
+WHERE time >= {{start}} AND time < {{end}}
+limit {{limit}}
+"""
+
 [influxdb]
 url = "http://localhost:8086"
 db = "glukoz"

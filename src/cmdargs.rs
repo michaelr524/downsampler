@@ -1,4 +1,5 @@
 use chrono::{format::ParseError, offset::TimeZone, NaiveDateTime, Utc};
+use clap::ArgMatches;
 use clap::{crate_version, App, Arg, ArgGroup, SubCommand};
 use crate::utils::time::truncate_seconds;
 use failure_derive::Fail;
@@ -47,17 +48,17 @@ pub enum Error {
     DurationTooLong(OutOfRangeError),
 }
 
-pub enum Command {
-    Downsample,
-    Split,
-}
-
-pub struct CmdArgs {
+pub struct TimePeriod {
     pub raw_start: NaiveDateTime,
     pub raw_end: NaiveDateTime,
     pub start: NaiveDateTime,
     pub end: NaiveDateTime,
-    pub command: Command,
+}
+
+pub enum CmdArgs {
+    Downsample(TimePeriod),
+    Split(TimePeriod),
+    Listen,
 }
 
 fn args_definitions<'a, 'b>() -> App<'a, 'b> {
@@ -121,23 +122,32 @@ years, year, y -- defined as 365.25 days
                 .arg(duration_arg.clone())
                 .group(period_end_group.clone()),
         )
+        .subcommand(SubCommand::with_name("listen").about("Continuous downsampling"))
 }
 
 pub fn parse_args() -> Result<CmdArgs, Error> {
     let args = args_definitions().get_matches();
 
-    let (args, command) = match args.subcommand() {
-        ("downsample", Some(subcommand)) => (subcommand, Command::Downsample),
-        ("split", Some(subcommand)) => (subcommand, Command::Split),
+    match args.subcommand() {
+        ("downsample", Some(subcommand)) => {
+            let time_period = parse_time_period(subcommand)?;
+            Ok(CmdArgs::Downsample(time_period))
+        }
+        ("split", Some(subcommand)) => {
+            let time_period = parse_time_period(subcommand)?;
+            Ok(CmdArgs::Split(time_period))
+        }
+        ("listen", Some(_)) => Ok(CmdArgs::Listen),
         _ => {
             args_definitions().print_help().unwrap();
             return Err(Error::CommandMissing);
         }
-    };
+    }
+}
 
+fn parse_time_period(args: &ArgMatches) -> Result<TimePeriod, Error> {
     let raw_start = parse_datetime(args.value_of("start"))
         .map_err(|e| Error::InvalidStartArgument(Box::new(e)))?;
-
     let raw_end = if args.is_present("duration") {
         let duration = parse_duration(args.value_of("duration"))
             .map_err(|e| Error::InvalidDurationArgument(Box::new(e)))?;
@@ -147,27 +157,37 @@ pub fn parse_args() -> Result<CmdArgs, Error> {
             .map_err(|e| Error::InvalidEndArgument(Box::new(e)))?;
         datetime
     };
-
     let start = truncate_seconds(raw_start);
     let end = truncate_seconds(raw_end);
 
-    Ok(CmdArgs {
+    Ok(TimePeriod {
         start,
         end,
         raw_start,
         raw_end,
-        command,
     })
 }
 
 pub fn print_args_info(settings: &CmdArgs) {
-    println!("Period {:?} - {:?}", settings.raw_start, settings.raw_end);
-    println!("Period truncated {:?} - {:?}", settings.start, settings.end);
-    println!(
-        "Period in nanos {:?} - {:?}",
-        settings.start.timestamp_nanos(),
-        settings.end.timestamp_nanos()
-    );
+    if let Some(time_period) = match settings {
+        CmdArgs::Downsample(time_period) => Some(time_period),
+        CmdArgs::Split(time_period) => Some(time_period),
+        CmdArgs::Listen => None,
+    } {
+        println!(
+            "Period {:?} - {:?}",
+            time_period.raw_start, time_period.raw_end
+        );
+        println!(
+            "Period truncated {:?} - {:?}",
+            time_period.start, time_period.end
+        );
+        println!(
+            "Period in nanos {:?} - {:?}",
+            time_period.start.timestamp_nanos(),
+            time_period.end.timestamp_nanos()
+        );
+    }
 }
 
 fn parse_duration(date_string: Option<&str>) -> Result<Duration, Error> {

@@ -1,5 +1,5 @@
 use chrono::NaiveDateTime;
-use crate::cmdargs::CmdArgs;
+use crate::cmdargs::TimePeriod;
 use crate::influx::from_json_values;
 use crate::influx::to_point;
 use crate::influx::FieldValue;
@@ -18,7 +18,7 @@ use time::Duration;
 //pub enum Error {
 //}
 
-pub fn split(args: &CmdArgs, config: &Config) -> () {
+pub fn split(args: &TimePeriod, config: &Config) -> () {
     let client = influx_client(
         &config.influxdb.url,
         &config.influxdb.db,

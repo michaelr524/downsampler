@@ -32,7 +32,6 @@ pub fn influx_client(url: &str, db_name: &str, username: &str, pass: &str) -> Cl
 
 pub fn run_query(client: &Client, query: &str) -> Result<Option<Vec<Node>>, error::Error> {
     //    println!("{}", query);
-
     client.query(query, Some(Precision::Nanoseconds))
 }
 

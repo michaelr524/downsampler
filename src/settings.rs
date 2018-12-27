@@ -102,11 +102,20 @@ pub struct Splitter {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct Listener {
+    pub redis_url: String,
+    pub poll_sleep_ms: u64,
+    pub measurement_template: String,
+    pub query_template: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct Config {
     pub influxdb: InfluxDB,
     pub vars: Vars,
     pub downsampler: Downsampler,
     pub splitter: Splitter,
+    pub listen: Listener,
 }
 
 pub fn config_from_file(filename: &str) -> Result<Config, ConfigError> {

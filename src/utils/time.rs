@@ -1,10 +1,20 @@
 use chrono::{Datelike, NaiveDateTime, TimeZone, Timelike, Utc};
+use lazy_static::lazy_static;
 use time::Duration;
+
+lazy_static! {
+    pub static ref UNIX_EPOCH: NaiveDateTime = Utc.timestamp(0, 0).naive_utc();
+}
 
 pub fn truncate_seconds(dt: NaiveDateTime) -> NaiveDateTime {
     Utc.ymd(dt.year(), dt.month(), dt.day())
         .and_hms(dt.hour(), dt.minute(), 0u32)
         .naive_utc()
+}
+
+pub fn parse_timestamp_sec(timestamp_str: &str) -> NaiveDateTime {
+    let timestamp = timestamp_str.parse::<i64>().unwrap();
+    NaiveDateTime::from_timestamp(timestamp, 0)
 }
 
 pub struct IntervalIterator {
