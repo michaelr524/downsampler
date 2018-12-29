@@ -25,7 +25,7 @@ pub fn downsample_period(
     interval_duration_secs: u64,
     measurement_name: &str,
 ) {
-    // TODO: batch small periods queries into large ones
+    // TODO: batch small periods queries into large ones/load larger chunks
     let duration = Duration::from_std(StdDuration::from_secs(interval_duration_secs)).unwrap();
     let begin = end.sub(duration);
 
@@ -38,8 +38,11 @@ pub fn downsample_period(
             e => print_err_and_exit(e),
         },
     };
-    let vals = from_json_values(series.values, &config.downsampler.fields)
-        .unwrap_or_else(|e| print_err_and_exit(e));
+    let vals = from_json_values(&series.values, &config.downsampler.fields)
+        .unwrap_or_else(|e| {
+            println!("\n\nseries.values: {:#?}", &series.values);
+            print_err_and_exit(e);
+        });
     //                let _count = vals.iter().count();
     //                println!("{} - [{} - {}] ({})", i, start, end, _count);
     let subset = lttb_downsample(

@@ -62,12 +62,12 @@ pub fn get_range(client: &Client, query_str: &str) -> Result<SeriesResult, Error
 }
 
 pub fn from_json_values(
-    vals: Vec<Vec<Value>>,
+    vals: &Vec<Vec<Value>>,
     fields: &Vec<Field>,
 ) -> Result<Vec<Vec<FieldValue>>, Error> {
-    vals.into_iter()
+    vals.iter()
         .map(|vec| {
-            vec.into_iter()
+            vec.iter()
                 .zip(fields.iter())
                 .map(|(v, field)| match field.data_type {
                     FieldDataType::Float => {
@@ -89,7 +89,7 @@ pub fn from_json_values(
                         Ok(FieldValue::Boolean(val))
                     }
                     FieldDataType::String => match v {
-                        Value::String(s) => Ok(FieldValue::String(s)),
+                        Value::String(s) => Ok(FieldValue::String(s.to_owned())),
                         _ => Err(Error::UnexpectedDataType(field.name.clone(), v.clone())),
                     },
                 })

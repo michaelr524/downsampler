@@ -60,7 +60,7 @@ pub fn split(args: &TimePeriod, config: &Config) -> () {
 
 //                    println!("{} - [{} - {}] ({})", i, start, end, count);
 
-                    let vals = from_json_values(series.values, &config.splitter.fields)
+                    let vals = from_json_values(&series.values, &config.splitter.fields)
                         .unwrap_or_else(|e| print_err_and_exit(e));
 
                     let points = to_points(&vals, &measurement_name, &config.splitter.fields);

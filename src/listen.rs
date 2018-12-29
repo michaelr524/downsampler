@@ -5,15 +5,17 @@ use crate::settings::Interval;
 use crate::utils::time::{intervals, parse_timestamp_sec};
 use crate::{cmdargs::CmdArgs, settings::Config, utils::error::print_err_and_exit};
 use influx_db_client::Client;
-use redis::Commands;
 use redis::Connection;
-use redis::PipelineCommands;
 use std::collections::HashMap;
 use std::ops::Sub;
 use std::thread;
 use std::time::Duration as StdDuration;
 use string_template::Template;
 use time::Duration;
+//use rayon::prelude::*;
+use r2d2_redis::{r2d2, RedisConnectionManager};
+use r2d2_redis::redis::{Commands, PipelineCommands};
+
 
 const UPDATES_TABLE_NAME: &str = "downsampler_updates";
 const CHECKPOINTS_TABLE_NAME: &str = "downsampler_checkpoints";
@@ -26,18 +28,26 @@ pub fn listen(_args: &CmdArgs, config: &Config) -> () {
         &config.influxdb.pass,
     );
 
-    let client = redis::Client::open(config.listen.redis_url.as_str())
-        .unwrap_or_else(|e| print_err_and_exit(e));
-    let con = client
-        .get_connection()
-        .unwrap_or_else(|e| print_err_and_exit(e));
+//    let client = redis::Client::open(config.listen.redis_url.as_str())
+//        .unwrap_or_else(|e| print_err_and_exit(e));
+//    let con = client
+//        .get_connection()
+//        .unwrap_or_else(|e| print_err_and_exit(e));
 
+    let manager = RedisConnectionManager::new(config.listen.redis_url.as_str()).unwrap();
+    let pool = r2d2::Pool::builder()
+        .build(manager)
+        .unwrap();
+
+    let con = pool.get().unwrap_or_else(|e| print_err_and_exit(e));
     let mut checkpoints = get_checkpoints(&con); // load checkpoints just once
-    println!("checkpoints: {:#?}", checkpoints);
+
+    println!("checkpoints: {:#?}", &checkpoints);
 
     let measurement_template = Template::new(&config.listen.measurement_template);
     let query_template = Template::new(&config.listen.query_template);
 
+    // TODO: parallelize this. mutex around checkpoints?
     loop {
         let map = get_updates(&con); // get updates
         if !map.is_empty() {
